@@ -1,0 +1,11 @@
+# Redacted example variable file for local setup.
+# Copy/rename this file to terraform.tfvars and replace the placeholders with real local values.
+# The real terraform.tfvars file is intentionally ignored and should never be committed.
+
+aws_profile     = "your-aws-profile"
+my_ip_cidr      = "YOUR.PUBLIC.EGRESS.IP/32"
+public_key_path = "~/.ssh/id_ed25519.pub"
+
+db_name     = "wordpress"
+db_user     = "wpadmin"
+db_password = "CHANGE_ME_NOW"

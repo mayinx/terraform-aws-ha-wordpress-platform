@@ -46,14 +46,12 @@ plan-save:
 	$(TF) plan -out=$(PLAN_FILE)
 
 plan-summary:
-	@# Show only the planned resource actions in a compact readable list.
-	$(TF) show -json $(PLAN_FILE) \
-	| jq -r '.resource_changes[] | "\(.change.actions | join(",")) \(.type).\(.name)"'
+	@# Show only create/update/delete resource actions in a compact readable list.
+	$(TF) show -json $(PLAN_FILE) | jq -r '.resource_changes[] | select([.change.actions[]] | any(. == "create" or . == "update" or . == "delete")) | "\(.change.actions | join(",")) \(.type).\(.name)"'
 
 plan-counts:
-	@# Show a grouped count of planned resource changes by Terraform resource type.
-	$(TF) show -json $(PLAN_FILE) \
-	| jq -r '[.resource_changes[] | .type] | group_by(.) | map("\(length)x \(.[0])") | .[]'
+	@# Show grouped counts of create/update/delete resource changes by Terraform resource type.
+	$(TF) show -json $(PLAN_FILE) | jq -r '[.resource_changes[] | select([.change.actions[]] | any(. == "create" or . == "update" or . == "delete")) | .type] | group_by(.) | map("\(length)x \(.[0])") | .[]'
 
 apply:
 	@# Apply the previously saved plan file so the exact reviewed plan gets executed.

@@ -3,10 +3,17 @@
 terraform.tfstate
 terraform.tfstate.*
 crash.log
-*.tfplan
 
 # Local variable files with secrets or machine-specific values
 terraform.tfvars
+
+# Local/generated plan and inspection artifacts
+tfplan
+plan.json
+terraform-plan-graph.svg
+terraform-plan-graph.png
+inframap.png
+inframap-state.png
 
 # Ignore unstructured dev notes  
 /docs/_private/

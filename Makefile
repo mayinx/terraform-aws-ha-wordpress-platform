@@ -82,3 +82,35 @@ aws-whoami:
 aws-azs:
 	@# Show the available Availability Zones in the selected AWS region.
 	AWS_PROFILE=$(AWS_PROFILE) aws ec2 describe-availability-zones --region $(AWS_REGION) --query 'AvailabilityZones[].ZoneName' --output table
+
+plan-json:
+	@# Export the saved Terraform plan as JSON for jq-based inspection and Rover.
+	terraform show -json $(PLAN_FILE) > plan.json
+
+graph-plan-svg:
+	@# Generate a Terraform dependency graph from the current plan as SVG.
+	terraform graph -type=plan | dot -Tsvg > terraform-plan-graph.svg
+
+graph-plan-png:
+	@# Generate a Terraform dependency graph from the current plan as PNG.
+	terraform graph -type=plan | dot -Tpng > terraform-plan-graph.png
+
+rover-plan:
+	@# Start Rover locally in Docker using the generated plan.json file.
+	docker run --rm -it -p 9000:9000 \
+		-v $(PWD)/plan.json:/src/plan.json \
+		im2nguyen/rover:latest \
+		-planJSONPath=plan.json
+
+rover-image:
+	@# Generate a static Rover SVG/image artifact instead of running the local web UI.
+	docker run --rm -it -v "$(PWD):/src" im2nguyen/rover -genImage true
+
+inframap-png:
+	@# Generate a provider-focused infrastructure graph from the current Terraform HCL.
+	inframap generate . | dot -Tpng > inframap.png
+
+inframap-state-png:
+	@# Generate a provider-focused infrastructure graph from the current Terraform state.
+	inframap generate terraform.tfstate | dot -Tpng > inframap-state.png
+		

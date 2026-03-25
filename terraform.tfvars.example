@@ -2,7 +2,7 @@
 # Copy/rename this file to terraform.tfvars and replace the placeholders with real local values.
 # The real terraform.tfvars file is intentionally ignored and should never be committed.
 
-aws_profile     = "your-aws-profile"
+aws_profile     = "your-aws-user-profile"
 my_ip_cidr      = "YOUR.PUBLIC.EGRESS.IP/32"
 public_key_path = "~/.ssh/id_ed25519.pub"
 

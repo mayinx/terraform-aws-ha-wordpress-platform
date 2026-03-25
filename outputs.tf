@@ -20,3 +20,18 @@ output "selected_azs" {
   description = "Availability Zones used for the deployment."
   value       = module.network.selected_azs
 }
+
+output "db_endpoint" {
+  description = "Endpoint address of the database instance."
+  value       = module.database.db_endpoint
+}
+
+output "db_port" {
+  description = "Database port."
+  value       = module.database.db_port
+}
+
+output "db_security_group_id" {
+  description = "Security group ID attached to the database instance."
+  value       = module.database.db_security_group_id
+}

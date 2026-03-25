@@ -35,3 +35,18 @@ output "db_security_group_id" {
   description = "Security group ID attached to the database instance."
   value       = module.database.db_security_group_id
 }
+
+output "alb_dns_name" {
+  description = "DNS name of the application load balancer."
+  value       = module.web.alb_dns_name
+}
+
+output "asg_name" {
+  description = "Name of the web tier Auto Scaling Group."
+  value       = module.web.asg_name
+}
+
+output "web_security_group_id" {
+  description = "Security group ID attached to the web instances."
+  value       = module.web.web_security_group_id
+}

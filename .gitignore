@@ -15,5 +15,8 @@ terraform-plan-graph.png
 inframap.png
 inframap-state.png
 
+plan.out
+tfplan.json
+
 # Ignore unstructured dev notes  
 /docs/_private/

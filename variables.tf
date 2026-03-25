@@ -51,3 +51,9 @@ variable "db_password" {
   type        = string
   sensitive   = true
 }
+
+variable "web_instance_type" {
+  description = "Instance type for the WordPress web tier."
+  type        = string
+  default     = "t2.micro"
+}

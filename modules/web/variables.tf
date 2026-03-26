@@ -57,3 +57,8 @@ variable "user_data_template_path" {
   description = "Path to the user-data template used to bootstrap WordPress."
   type        = string
 }
+
+variable "bastion_security_group_id" {
+  description = "Security group ID of the bastion host allowed to SSH into the web tier."
+  type        = string
+}

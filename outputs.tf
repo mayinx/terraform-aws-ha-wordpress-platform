@@ -50,3 +50,13 @@ output "web_security_group_id" {
   description = "Security group ID attached to the web instances."
   value       = module.web.web_security_group_id
 }
+
+output "bastion_public_ip" {
+  description = "Public IP address of the bastion host."
+  value       = module.bastion.bastion_public_ip
+}
+
+output "bastion_security_group_id" {
+  description = "Security group ID attached to the bastion host."
+  value       = module.bastion.bastion_security_group_id
+}

@@ -58,6 +58,14 @@ resource "aws_security_group" "web" {
   vpc_id      = var.vpc_id
 
   ingress {
+    description     = "SSH from the bastion host security group."
+    from_port       = 22
+    to_port         = 22
+    protocol        = "tcp"
+    security_groups = [var.bastion_security_group_id]
+  }
+
+  ingress {
     description     = "HTTP from the ALB security group."
     from_port       = 80
     to_port         = 80

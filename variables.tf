@@ -57,3 +57,9 @@ variable "web_instance_type" {
   type        = string
   default     = "t2.micro"
 }
+
+variable "bastion_instance_type" {
+  description = "EC2 instance type for the bastion host."
+  type        = string
+  default     = "t2.micro"
+}

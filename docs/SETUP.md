@@ -70,20 +70,29 @@ A few helper tools are also needed for installation and later inspection tasks.
 ### Commands
 
 ~~~bash
-# Install helper tools used during setup.
+# Refresh package index + install helper tools used during setup.
 sudo apt-get update
 sudo apt-get install -y curl unzip gpg lsb-release
 
-# Add the official HashiCorp APT repository and install Terraform.
+
+# Download the official HashiCorp GPG signing key and store it as a local APT keyring file.
+# This lets APT verify packages from the HashiCorp repository.
 curl -fsSL https://apt.releases.hashicorp.com/gpg \
   | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
 
+# Add the official HashiCorp APT repository to this machine.
+# - dpkg --print-architecture inserts the local CPU architecture, such as amd64
+# - signed-by=... tells APT which keyring to trust for this repository
+# - grep ... /etc/os-release (or lsb_release -cs as fallback) inserts the Ubuntu codename
+# - tee writes the final repository line into a new APT sources file
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(grep -oP '(?<=UBUNTU_CODENAME=).*' /etc/os-release || lsb_release -cs) main" \
   | sudo tee /etc/apt/sources.list.d/hashicorp.list
 
+# Refresh package index again and install Terraform from the official HashiCorp repository.
 sudo apt-get update
 sudo apt-get install -y terraform
 
+# Verify installation
 terraform version
 ~~~
 
@@ -105,6 +114,10 @@ Terraform should print a version string.
 ### Rationale
 
 The Terraform AWS provider needs valid AWS credentials, but account verification is easier if the AWS CLI works first.
+
+> [!NOTE]
+> **Terraform AWS provider**  
+> The Terraform AWS provider is the plugin Terraform uses to talk to AWS APIs - so that resource blocks (like `aws_vpc`, `aws_subnet`, `aws_db_instance`, `aws_lb`), and data sources (`aws_availability_zones`) actually "come to live"...
 
 ### Commands
 
@@ -210,13 +223,13 @@ The **secret access key** is shown only once. If it is lost, create a new access
 ## Step 05 - Create a reusable local AWS CLI profile
 
 > [!NOTE]
-> **IAM user vs AWS CLI profile**  
+> **AWS IAM user vs AWS CLI profile**  
 > The IAM user is the real AWS identity.  
 > The AWS CLI profile is just a **local nickname** stored on the workstation.
 
 ### Rationale
 
-A **generic reusable profile name** is better than a project-specific one if the same AWS account may be reused later.
+A local AWS CLI profile is needed for `aws` and Terraform provider authentication and can be reused for other Terraform projects.
 
 ### Recommended profile name
 
@@ -286,24 +299,7 @@ db_user     = "wpadmin"
 db_password = "CHANGE_ME_NOW"
 ~~~
 
-### Example real local file
-
-~~~hcl
-aws_profile     = "aws-personal-admin"
-my_ip_cidr      = "YOUR.ACTUAL.CURRENT.IP/32"
-public_key_path = "~/.ssh/id_ed25519.pub"
-
-db_name     = "wordpress"
-db_user     = "wpadmin"
-db_password = "YOUR_REAL_DB_PASSWORD"
-~~~
-
-### VPN note for `my_ip_cidr`
-
-If a VPN is active, AWS usually sees the **VPN exit IP**, not the home ISP IP.
-That means the bastion SSH rule must use the **current public egress IP** actually seen from the internet.
-
-### Useful commands
+To retrieve the IP: 
 
 ~~~bash
 # Show the current public egress IP.
@@ -448,8 +444,32 @@ docker run --rm -it ...
 
 ## Sources
 
-- Terraform install / CLI basics (HashiCorp docs)
-- AWS CLI install and configuration (AWS docs)
-- IAM users, root-user best practices, and access keys (AWS docs)
-- AWS Budgets / budget templates / budget behavior (AWS docs)
-- Git ignore and local-only file handling (general Git behavior already reflected in project workflow)
+- [HashiCorp: Install Terraform](https://developer.hashicorp.com/terraform/install)  
+  Official Terraform install page 
+
+- [HashiCorp: Terraform CLI documentation](https://developer.hashicorp.com/terraform/cli)  
+  Official Terraform CLI reference (`init`, `validate`, `plan`, `apply`, `destroy`).
+
+- [AWS: Install or update the AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)  
+  Official AWS CLI installation guide for Linux.
+
+- [AWS: AWS CLI configuration and credential files](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html)  
+  Official reference for local AWS profiles, credentials, and config files.
+
+- [AWS IAM: Compare IAM identities and credentials](https://docs.aws.amazon.com/IAM/latest/UserGuide/introduction_identity-management.html)  
+  Official overview of AWS account identities and why an IAM user is preferable to daily root usage.
+
+- [AWS IAM: Root user best practices](https://docs.aws.amazon.com/IAM/latest/UserGuide/root-user-best-practices.html)  
+  Official AWS guidance on why the root user should not be used for normal project work.
+
+- [AWS IAM: Manage access keys for IAM users](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html)  
+  Official AWS guide for creating and managing programmatic access for CLI / Terraform use.
+
+- [AWS Budgets: Managing your costs with AWS Budgets](https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html)  
+  Official AWS explanation of what budgets do, how alerts work, and the limits of budget timing / enforcement.
+
+- [AWS Budgets: Using a budget template (simplified)](https://docs.aws.amazon.com/cost-management/latest/userguide/budget-templates.html)  
+  Official AWS documentation for the simplified budget-template flow used in setup.
+
+- [AWS Budgets: Creating a cost budget](https://docs.aws.amazon.com/cost-management/latest/userguide/create-cost-budget.html)  
+  Official AWS reference for budget scope, cost type, notifications, and related settings.

@@ -234,7 +234,9 @@ This project includes a few practical engineering choices worth calling out:
 
 ---
 
-## 🧾 Evidence
+## 🧾 Evidence Overview
+
+### Overview
 
 **Evidence captured in `docs/evidence/...` during validation includes:**
 
@@ -250,7 +252,7 @@ This project includes a few practical engineering choices worth calling out:
   - login screen
   - rendered sample page
 
-Representative evidence files captured during validation:
+**Representative evidence files captured during validation:**
 
 - `docs/evidence/aws/03-aws-te-resoucre-search-result-after-apply.png`
 - `docs/evidence/aws/18-aws-ec2-target-group-targets.png`
@@ -258,12 +260,52 @@ Representative evidence files captured during validation:
 - `docs/evidence/wp/01-wp-successfully-loaded-wp-site.png`
 - `docs/evidence/wp/05-wp-successfully-rendered-sample-page.png`
 
-Additional terminal proof available for the documentation layer includes:
+**Additional terminal proof available for the documentation layer includes:**
 
 - successful `make apply`
 - successful Terraform outputs after apply
 - successful `terraform plan -destroy`
 - successful `make destroy`
+
+## 📸 Evidence Highlights
+
+### 1) Provisioned resoucres on AWS after `terraform apply` 
+
+![AWS Tag Editor search result after destroy](docs/evidence/aws/03-aws-te-resoucre-search-result-after-apply.png)
+
+*Post-apply proof showing that the aws stack was provisioend by terraform (obtained via a tag-editor search for ressoucres carrying the project tag `wordpress-platform`*
+
+### 2) Public WordPress page rendered successfully
+
+![Public WordPress sample page rendered through the ALB](docs/evidence/wp/05-wp-successfully-rendered-sample-page.png)
+
+*Public proof that the stack was reachable through the load balancer and rendered application content successfully.*
+
+### 3) Application Load Balancer created and exposed as the public entrypoint
+
+![AWS EC2 Load Balancer details](docs/evidence/aws/11-aws-ec2-lb-wp-alb-details.png)
+
+*ALB details showing the public entrypoint used to reach the WordPress platform.*
+
+### 4) Auto Scaling Group created for the private web tier
+
+![AWS Auto Scaling Group details](docs/evidence/aws/13-aws-ec2-asg-wp-asg-details.png)
+
+*ASG details proving that the web tier was deployed as an Auto Scaling Group instead of a single standalone EC2 instance.*
+
+### 5) Target group targets registered behind the ALB
+
+![AWS target group targets](docs/evidence/aws/18-aws-ec2-target-group-targets.png)
+
+*Target-group proof showing that the web instances were registered behind the ALB and participated in request handling.*
+
+### 6) Resource cleanup verified after destroy
+
+TODO: Provide current screenshot showing no hits - once AWS refreshed this  
+
+![AWS Tag Editor search result after destroy](docs/evidence/aws/21-aws-te-resoucre-search-result-after-destroy.png)
+
+*Post-destroy proof showing that the AWS stack was torn down again instead of being left running.*
 
 ---
 

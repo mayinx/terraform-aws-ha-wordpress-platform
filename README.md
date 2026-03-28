@@ -2,7 +2,7 @@
 
 ### Terraform-based modular AWS infrastructure provisioning • Modular VPC • Multi-AZ networking • Dual NAT gateways • ALB + Auto Scaling web tier • Bastion access • Private RDS • Evidence-backed apply / destroy validation
 
-DevOps / Infrastructure-as-Code project demonstrating how to provision a **highly available WordPress platform on AWS** with **Terraform**, using a **custom VPC**, **public/private multi-AZ subnet layout**, **dual NAT gateways**, an **Application Load Balancer**, an **Auto Scaling web tier**, a **bastion host**, and a **private Multi-AZ RDS database**.
+DevOps / Infrastructure-as-Code project demonstrating how to provision a highly available WordPress platform on AWS with Terraform, using a custom VPC, public/private multi-AZ subnet layout, dual NAT gateways, an Application Load Balancer, an Auto Scaling web tier, a bastion host, and a private Multi-AZ RDS database.
 
 > **Implementation note:** This project focuses on **declarative infrastructure provisioning, validation, and clean teardown**.  
 > The stack was successfully created, validated through AWS console evidence and browser checks/screenshots, and then destroyed again to avoid unnecessary cloud costs.

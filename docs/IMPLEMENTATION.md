@@ -107,13 +107,13 @@ A clear target architecture existed before implementation started, which prevent
 
 ---
 
-## Step 02 - Scaffold the Terraform project structure and root module
+## Step 02 - Scaffold the Terraform project structure and root module + implement the Terraform base configuration
 
 ### Rationale
 
 A clean scaffold makes Terraform work easier to understand and easier to extend incrementally.
 The project was therefore split into:
-- a **root module** for wiring
+- a **root "module"** for wiring
 - dedicated **child modules** for each major infrastructure concern
 - a separate **`user_data/` directory** for EC2 bootstrap logic (Wordpress setup)
 
@@ -139,28 +139,116 @@ touch modules/database/{main.tf,variables.tf,outputs.tf}
 touch modules/bastion/{main.tf,variables.tf,outputs.tf}
 ~~~
 
-### Why this structure was chosen
+### Scaffolded project structure
 
-- `main.tf` wires the child modules together.
-- `providers.tf` keeps provider config separate.
-- `versions.tf` pins Terraform/provider requirements.
-- `variables.tf` and `outputs.tf` keep inputs and outputs easy to inspect.
-- `modules/*` separates infrastructure responsibilities.
-- `user_data/wordpress.sh.tftpl` keeps the EC2 bootstrap logic out of the main HCL files.
+The initial scaffold created the following project shape:
+
+~~~bash
+.
+├── main.tf                 # root module wiring
+├── providers.tf            # AWS provider configuration
+├── versions.tf             # Terraform / provider version requirements
+├── variables.tf            # root input variables
+├── outputs.tf              # root outputs for verification and module hand-off
+├── .gitignore              # local-only / generated file exclusions
+├── terraform.tfvars        # local real values (ignored)
+├── modules/
+│   ├── network/            # VPC, subnets, routing, NAT
+│   ├── database/           # DB subnet group, DB SG, RDS
+│   ├── web/                # ALB, launch template, ASG, web SGs
+│   └── bastion/            # bastion EC2, key pair, bastion SG
+└── user_data/
+    └── wordpress.sh.tftpl  # EC2 bootstrap template for WordPress setup
+~~~
+
+This scaffold did not yet provision anything by itself.  
+It created the file and module structure that was then filled incrementally with the actual Terraform configuration.
+
+### Terraform structure rationale
+
+The created structure follows common Terraform project conventions:
+- a **root module** for provider setup, shared inputs/outputs, and module wiring
+- **child modules** for separate infrastructure concerns
+- a separate **template file** for EC2 bootstrap logic that would otherwise clutter the HCL files
+
+Concretely:
+
+- **`main.tf`** wires the child modules together.
+- **`providers.tf`** keeps provider config separate.
+- **`versions.tf`** pins Terraform/provider requirements.
+- **`variables.tf`** + **`outputs.tf`** make inputs/outputs easier to inspect.
+- **`modules/*`** separates infrastructure responsibilities.
+- **`user_data/wordpress.sh.tftpl`** keeps the EC2 bootstrap logic out of the main HCL files.
+
+**Sources:** This structure is based on standard Terraform module / provider / variable patterns and the referenced sources listed at the end of this document.
 
 > [!NOTE]
 > **Terraform AWS provider**  
 > The **Terraform AWS provider** is the plugin Terraform uses to talk to AWS APIs.  
-> It is what makes resource blocks such as `aws_vpc`, `aws_subnet`, `aws_db_instance`, and `aws_lb` actually work.  
-> In this project:
-> - `required_providers` declares that the project depends on **`hashicorp/aws`**
-> - the `provider "aws"` block configures **how Terraform should use it**, for example:
+> It is what makes resource blocks such as `aws_vpc`, `aws_subnet`, `aws_db_instance`, and `aws_lb` meaningful to Terraform.
+>
+> In this project, that provider setup is split across two root files:
+> - **`versions.tf`** declares the dependency on **`hashicorp/aws`** via `required_providers`
+> - **`providers.tf`** configures how Terraform should use that provider, for example:
 >   - which **AWS region** to target
 >   - which **local AWS CLI profile** to use
 
+### Implement Terraform Base Configuration
+
+Next step is to fill the still empty Terraform structure with the actual Terraform configuration needed for the target AWS platform.
+
+**This includes:**
+- The **root files** to define the overall project interface and wiring
+- The **module files** to define the concrete AWS resources for each infrastructure concern
+- The **template file** under `user_data/` to define the EC2 bootstrap logic for WordPress installation
+
+**The implementation followes a combination of:**
+- the exercise requirements
+- standard Terraform module / provider / variable patterns
+- standard AWS resource patterns
+- and the EC2 user-data / WordPress installation approach documented in the referenced sources
+
+**Important configured values (examples):**
+
+- **`region = eu-west-3`** (in the root Terraform configuration `variables.tf`)  
+  This fixes the deployment target to Paris and therefore influences AZ selection, console inspection, and the resulting public endpoints.
+
+- **`project_name` and `environment`** (also in `variables.tf`)  
+  These values shape names and tags across the stack and make AWS Console filtering and Tag Editor searches easier later on.
+
+- **`aws_profile`** (in the root AWS provider configuration in `providers.tf` 
+  This tells Terraform which local AWS CLI profile to reuse for AWS API access.
+
+- **`my_ip_cidr`** and **`public_key_path`** (also in `variables.tf`)  
+  These values controll bastion SSH access and the SSH public key uploaded into AWS.
+
+- **Custom CIDR ranges** in the network module  
+  The project explicitly defines:
+  - VPC CIDR: `10.0.0.0/16`
+  - public subnet 1: `10.0.1.0/24`
+  - public subnet 2: `10.0.2.0/24`
+  - private subnet 1: `10.0.11.0/24`
+  - private subnet 2: `10.0.12.0/24`  
+  These ranges were chosen deliberately in Terraform rather than inherited from the AWS default VPC.
+
+- **`db_name`, `db_user`, `db_password`** in the root variables / database wiring  
+  These values define the database connection to be used by WordPress during bootstrap and runtime.
+
+- **`web_instance_type` and `bastion_instance_type`** in `variables.tf`  
+  These influence both resource sizing and cost.
+
+- **Dynamic AMI and AZ lookup** in the module configuration  
+  Instead of hardcoding an AMI ID or fixed AZ list, Terraform data sources are used to discover those values "at plan/apply time."
+
+- **`user_data_template_path`** in the web module wiring  
+  This linkes the launch template to the external EC2 bootstrap template file for WordPress setup.
+
+For the **source references** behind these patterns, see the grouped **Sources** section at the end of this document.
+
+
 ### Result
 
-A predictable Terraform layout existed before the first real resources were defined.
+A predictable Terraform layout exists as base for the definition of the real resources.
 
 ---
 
@@ -168,7 +256,7 @@ A predictable Terraform layout existed before the first real resources were defi
 
 ### Rationale
 
-Everything else depends on networking first.
+Networking must be defined first - since it servces as the base fore everything else.
 The ALB, bastion, web tier, and database all need a VPC and the correct subnet layout.
 
 > [!NOTE]
@@ -346,9 +434,19 @@ That is the core application path of the whole platform.
 - HTTP listener
 - launch template
 - Auto Scaling Group
-- WordPress bootstrap via `user_data/wordpress.sh.tftpl`
+- WordPress bootstrap via `user_data/wordpress.sh.tftpl`:
 
-### Why Terraform data sources were used
+### EC2 Wordpress Bootstrap approach (`user_data/wordpress.sh.tftpl`) 
+
+The EC2 bootstrap logic in `user_data/wordpress.sh.tftpl` combines:
+
+- the standard **AWS EC2 user-data pattern** for launch-time instance configuration
+- the conventional **WordPress installation flow on Linux**
+- the standard **`wp-config.php` database / auth-key configuration model**
+
+Further deatils can be found in the bootstrap script and in the sources section. 
+
+### Terraform data sources
 
 Terraform **data sources** were used to select:
 - the target **Availability Zones**
@@ -357,7 +455,7 @@ Terraform **data sources** were used to select:
 This was done **so the configuration can discover environment details dynamically instead of hardcoding brittle values**.
 The project therefore stays more reusable and less tied to one frozen AMI ID or one manually typed AZ list.
 
-### Why the web tier is private
+### Private web tier
 
 The web instances run in **private subnets**, while the ALB remains public.  
 This keeps the public attack surface smaller: the internet reaches the ALB, not the EC2 instances directly.
@@ -797,62 +895,78 @@ The AWS Budget is a useful warning layer, but the real stop button is still `ter
 
 ## Sources
 
+### Terraform structure, providers, and CLI
+
 - [HashiCorp: Install Terraform](https://developer.hashicorp.com/terraform/install)  
   Official Terraform install page.
 
 - [HashiCorp: Terraform CLI overview](https://developer.hashicorp.com/terraform/cli)  
-  Official CLI overview for the Terraform command-line workflow.
+  Official CLI overview for the Terraform workflow.
 
 - [HashiCorp: `terraform plan` command reference](https://developer.hashicorp.com/terraform/cli/commands/plan)  
   Official reference for speculative plans and saved plan files.
 
 - [HashiCorp: `terraform show` command reference](https://developer.hashicorp.com/terraform/cli/commands/show)  
-  Official reference for rendering human-readable or JSON output from Terraform state and plan files.
+  Official reference for human-readable and JSON rendering of plan/state data.
 
 - [HashiCorp: `terraform destroy` command reference](https://developer.hashicorp.com/terraform/cli/commands/destroy)  
-  Official reference for tearing down Terraform-managed infrastructure.
+  Official reference for stack teardown.
 
 - [HashiCorp: Providers overview](https://developer.hashicorp.com/terraform/language/providers)  
-  Official explanation of what providers are and how Terraform uses them to talk to external APIs.
+  Official explanation of what providers are and how Terraform uses them.
 
 - [HashiCorp: Provider requirements](https://developer.hashicorp.com/terraform/language/providers/requirements)  
-  Official reference for `required_providers`, including provider source addresses such as `hashicorp/aws`.
+  Official reference for `required_providers`.
 
 - [HashiCorp: Standard module structure](https://developer.hashicorp.com/terraform/language/modules/develop/structure)  
-  Official guidance for the `main.tf` / `variables.tf` / `outputs.tf` module layout used in this project.
+  Official guidance for the `main.tf` / `variables.tf` / `outputs.tf` module layout.
 
 - [HashiCorp: `templatefile` function](https://developer.hashicorp.com/terraform/language/functions/templatefile)  
-  Official reference for rendering external template files such as `user_data/wordpress.sh.tftpl`.
+  Official reference for external template rendering such as `wordpress.sh.tftpl`.
+
+### Local AWS access and account preparation
 
 - [AWS: Install or update the AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)  
   Official AWS CLI installation guide for Linux.
 
 - [AWS: AWS CLI configuration and credential files](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html)  
-  Official reference for local named AWS CLI profiles and credential storage.
+  Official reference for named AWS CLI profiles and local credentials.
 
 - [AWS IAM: Root user best practices](https://docs.aws.amazon.com/IAM/latest/UserGuide/root-user-best-practices.html)  
-  Official AWS guidance on avoiding daily root-user usage.
+  Official AWS guidance on avoiding root-user usage for normal project work.
 
 - [AWS IAM: Manage access keys for IAM users](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html)  
-  Official AWS guide for creating and managing IAM user access keys for CLI / Terraform use.
+  Official AWS guide for CLI / Terraform programmatic access via IAM users.
+
+### Cost awareness and cleanup
 
 - [AWS Budgets: Managing your costs with AWS Budgets](https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html)  
-  Official explanation of what budgets do, how alerts work, and the limits of budget timing / enforcement.
+  Official explanation of budget behavior, alerts, and limitations.
 
 - [AWS Budgets: Using a budget template (simplified)](https://docs.aws.amazon.com/cost-management/latest/userguide/budget-templates.html)  
-  Official AWS documentation for the simplified template-based budget creation flow.
+  Official documentation for the simplified budget-template flow.
 
 - [AWS Budgets: Creating a cost budget](https://docs.aws.amazon.com/cost-management/latest/userguide/create-cost-budget.html)  
-  Official AWS reference for budget scope, cost type, and alert configuration.
+  Official reference for budget scope, cost type, and alerts.
+
+- [AWS Tag Editor: Find resources to tag](https://docs.aws.amazon.com/tag-editor/latest/userguide/find-resources-to-tag.html)  
+  Official AWS documentation for cross-resource tag-based search in the console.
+
+### EC2 WordPress bootstrap approach
 
 - [AWS EC2: User data](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/user-data.html)  
-  Official AWS documentation for running bootstrap commands at EC2 instance launch.
+  AWS mechanism used to run shell commands automatically when an EC2 instance launches.
+
+- [WordPress: How to install WordPress](https://developer.wordpress.org/advanced-administration/before-install/howto-install/)  
+  Conventional WordPress installation flow: place the files, prepare the database, and complete the installation.
+
+- [WordPress: `wp-config.php`](https://developer.wordpress.org/apis/wp-config-php/)  
+  Database settings, salts, and core configuration values written into `wp-config.php`.
+
+### Runtime validation in AWS
 
 - [AWS ELB: Check target health](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/check-target-health.html)  
   Official AWS documentation for ALB target registration and health-state inspection.
 
 - [AWS RDS: Creating a DB instance](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_CreateDBInstance.html)  
   Official AWS documentation for RDS DB instance creation behavior.
-
-- [AWS Tag Editor: Find resources to tag](https://docs.aws.amazon.com/tag-editor/latest/userguide/find-resources-to-tag.html)  
-  Official AWS documentation for cross-resource tag-based search in the console.

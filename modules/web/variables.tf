@@ -1,6 +1,10 @@
 # Declares the input variables for the web module.
 # These values define where the web tier runs and how it connects to the database.
 
+# -----------------------------------------------------------------------------
+# Naming / tagging context
+# -----------------------------------------------------------------------------
+
 variable "project_name" {
   description = "Project name used in resource names and tags."
   type        = string
@@ -10,6 +14,10 @@ variable "environment" {
   description = "Environment name used in resource names and tags."
   type        = string
 }
+
+# -----------------------------------------------------------------------------
+# Network placement
+# -----------------------------------------------------------------------------
 
 variable "vpc_id" {
   description = "ID of the VPC where the web tier will be deployed."
@@ -25,6 +33,10 @@ variable "private_subnet_ids" {
   description = "IDs of the private subnets used by the web instances."
   type        = list(string)
 }
+
+# -----------------------------------------------------------------------------
+# WordPress database connection
+# -----------------------------------------------------------------------------
 
 variable "db_endpoint" {
   description = "Endpoint address of the database instance."
@@ -47,6 +59,10 @@ variable "db_password" {
   sensitive   = true
 }
 
+# -----------------------------------------------------------------------------
+# Web tier sizing / bootstrap inputs
+# -----------------------------------------------------------------------------
+
 variable "instance_type" {
   description = "EC2 instance type for the web tier."
   type        = string
@@ -57,6 +73,10 @@ variable "user_data_template_path" {
   description = "Path to the user-data template used to bootstrap WordPress."
   type        = string
 }
+
+# -----------------------------------------------------------------------------
+# Administrative access control
+# -----------------------------------------------------------------------------
 
 variable "bastion_security_group_id" {
   description = "Security group ID of the bastion host allowed to SSH into the web tier."

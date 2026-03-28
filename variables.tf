@@ -1,6 +1,10 @@
 # Declares the root input variables for the project.
 # These values control naming, AWS access, networking inputs, and database settings.
 
+# -----------------------------------------------------------------------------
+# Project identity and deployment scope
+# -----------------------------------------------------------------------------
+
 variable "project_name" {
   description = "Project name used for tagging and naming."
   type        = string
@@ -19,10 +23,18 @@ variable "region" {
   default     = "eu-west-3"
 }
 
+# -----------------------------------------------------------------------------
+# Local AWS access
+# -----------------------------------------------------------------------------
+
 variable "aws_profile" {
   description = "AWS CLI profile Terraform should use."
   type        = string
 }
+
+# -----------------------------------------------------------------------------
+# SSH / administrative access
+# -----------------------------------------------------------------------------
 
 variable "my_ip_cidr" {
   description = "Public egress IP in CIDR format for restricted SSH access."
@@ -33,6 +45,10 @@ variable "public_key_path" {
   description = "Path to the local SSH public key for bastion access."
   type        = string
 }
+
+# -----------------------------------------------------------------------------
+# Database settings
+# -----------------------------------------------------------------------------
 
 variable "db_name" {
   description = "WordPress database name."
@@ -51,6 +67,10 @@ variable "db_password" {
   type        = string
   sensitive   = true
 }
+
+# -----------------------------------------------------------------------------
+# EC2 instance sizing
+# -----------------------------------------------------------------------------
 
 variable "web_instance_type" {
   description = "Instance type for the WordPress web tier."

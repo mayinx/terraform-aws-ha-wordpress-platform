@@ -1,6 +1,10 @@
 # Declares the input variables for the network module.
 # These values define the VPC address space and the public/private subnet layout.
 
+# -----------------------------------------------------------------------------
+# Naming / tagging context
+# -----------------------------------------------------------------------------
+
 variable "project_name" {
   description = "Project name used in resource names and tags."
   type        = string
@@ -10,6 +14,10 @@ variable "environment" {
   description = "Environment name used in resource names and tags."
   type        = string
 }
+
+# -----------------------------------------------------------------------------
+# Network address ranges
+# -----------------------------------------------------------------------------
 
 variable "vpc_cidr" {
   description = "CIDR block for the VPC."

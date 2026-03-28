@@ -2,14 +2,26 @@
 # This module creates the VPC, public/private subnets across two Availability Zones,
 # the Internet Gateway, two NAT Gateways, and the route tables that connect them.
 
+# -----------------------------------------------------------------------------
+# Data sources
+# -----------------------------------------------------------------------------
+
 data "aws_availability_zones" "available" {
   state = "available"
 }
+
+# -----------------------------------------------------------------------------
+# Local values
+# -----------------------------------------------------------------------------
 
 locals {
   name_prefix  = "${var.project_name}-${var.environment}"
   selected_azs = slice(data.aws_availability_zones.available.names, 0, 2)
 }
+
+# -----------------------------------------------------------------------------
+# VPC and Internet Gateway
+# -----------------------------------------------------------------------------
 
 resource "aws_vpc" "this" {
   cidr_block           = var.vpc_cidr
@@ -29,6 +41,10 @@ resource "aws_internet_gateway" "this" {
   }
 }
 
+# -----------------------------------------------------------------------------
+# Public subnets
+# -----------------------------------------------------------------------------
+
 resource "aws_subnet" "public" {
   count = 2
 
@@ -43,6 +59,10 @@ resource "aws_subnet" "public" {
   }
 }
 
+# -----------------------------------------------------------------------------
+# Private subnets
+# -----------------------------------------------------------------------------
+
 resource "aws_subnet" "private" {
   count = 2
 
@@ -56,6 +76,10 @@ resource "aws_subnet" "private" {
     Tier = "private"
   }
 }
+
+# -----------------------------------------------------------------------------
+# Elastic IPs and NAT Gateways
+# -----------------------------------------------------------------------------
 
 resource "aws_eip" "nat" {
   count = 2
@@ -80,6 +104,10 @@ resource "aws_nat_gateway" "this" {
   }
 }
 
+# -----------------------------------------------------------------------------
+# Public routing
+# -----------------------------------------------------------------------------
+
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.this.id
 
@@ -99,6 +127,10 @@ resource "aws_route_table_association" "public" {
   subnet_id      = aws_subnet.public[count.index].id
   route_table_id = aws_route_table.public.id
 }
+
+# -----------------------------------------------------------------------------
+# Private routing
+# -----------------------------------------------------------------------------
 
 resource "aws_route_table" "private" {
   count = 2

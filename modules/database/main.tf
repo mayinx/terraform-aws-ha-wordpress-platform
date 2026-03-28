@@ -2,13 +2,25 @@
 # This module creates a DB subnet group, a database security group,
 # and a private Multi-AZ RDS MySQL instance.
 
+# -----------------------------------------------------------------------------
+# Data sources
+# -----------------------------------------------------------------------------
+
 data "aws_vpc" "selected" {
   id = var.vpc_id
 }
 
+# -----------------------------------------------------------------------------
+# Local values
+# -----------------------------------------------------------------------------
+
 locals {
   name_prefix = "${var.project_name}-${var.environment}"
 }
+
+# -----------------------------------------------------------------------------
+# DB subnet group
+# -----------------------------------------------------------------------------
 
 resource "aws_db_subnet_group" "this" {
   name       = "${local.name_prefix}-db-subnet-group"
@@ -18,6 +30,10 @@ resource "aws_db_subnet_group" "this" {
     Name = "${local.name_prefix}-db-subnet-group"
   }
 }
+
+# -----------------------------------------------------------------------------
+# Database security group
+# -----------------------------------------------------------------------------
 
 resource "aws_security_group" "db" {
   name        = "${local.name_prefix}-db-sg"
@@ -44,6 +60,10 @@ resource "aws_security_group" "db" {
     Name = "${local.name_prefix}-db-sg"
   }
 }
+
+# -----------------------------------------------------------------------------
+# RDS instance
+# -----------------------------------------------------------------------------
 
 resource "aws_db_instance" "this" {
   identifier        = "${local.name_prefix}-db"

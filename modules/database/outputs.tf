@@ -1,6 +1,10 @@
 # Exposes the database identifiers needed by later modules and verification steps.
 # These outputs make the database endpoint and security group available at the root level.
 
+# -----------------------------------------------------------------------------
+# Database outputs
+# -----------------------------------------------------------------------------
+
 output "db_endpoint" {
   description = "Endpoint address of the database instance."
   value       = aws_db_instance.this.address

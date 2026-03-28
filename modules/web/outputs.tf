@@ -1,6 +1,10 @@
 # Exposes the web tier identifiers needed by later modules and verification steps.
 # These outputs surface the ALB DNS name, ASG name, and web security group ID.
 
+# -----------------------------------------------------------------------------
+# Web outputs
+# -----------------------------------------------------------------------------
+
 output "alb_dns_name" {
   description = "DNS name of the application load balancer."
   value       = aws_lb.this.dns_name

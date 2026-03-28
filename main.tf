@@ -1,6 +1,9 @@
 # Defines the top-level project composition.
 # The root module wires together the infrastructure modules and passes shared inputs into them.
 
+# -----------------------------------------------------------------------------
+# Network layer
+# -----------------------------------------------------------------------------
 module "network" {
   source = "./modules/network"
 
@@ -8,6 +11,9 @@ module "network" {
   environment  = var.environment
 }
 
+# -----------------------------------------------------------------------------
+# Database layer
+# -----------------------------------------------------------------------------
 module "database" {
   source = "./modules/database"
 
@@ -21,6 +27,9 @@ module "database" {
   db_password = var.db_password
 }
 
+# -----------------------------------------------------------------------------
+# Bastion access layer
+# -----------------------------------------------------------------------------
 module "bastion" {
   source = "./modules/bastion"
 
@@ -33,6 +42,9 @@ module "bastion" {
   instance_type    = var.bastion_instance_type
 }
 
+# -----------------------------------------------------------------------------
+# Web / application layer
+# -----------------------------------------------------------------------------
 module "web" {
   source = "./modules/web"
 

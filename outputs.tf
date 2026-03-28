@@ -1,6 +1,9 @@
 # Exposes the key root-level outputs needed for verification and for later modules.
 # These outputs make the network foundation visible without opening the state file directly.
 
+# -----------------------------------------------------------------------------
+# Network outputs
+# -----------------------------------------------------------------------------
 output "vpc_id" {
   description = "ID of the VPC."
   value       = module.network.vpc_id
@@ -21,6 +24,10 @@ output "selected_azs" {
   value       = module.network.selected_azs
 }
 
+# -----------------------------------------------------------------------------
+# Database outputs
+# -----------------------------------------------------------------------------
+
 output "db_endpoint" {
   description = "Endpoint address of the database instance."
   value       = module.database.db_endpoint
@@ -36,6 +43,10 @@ output "db_security_group_id" {
   value       = module.database.db_security_group_id
 }
 
+# -----------------------------------------------------------------------------
+# Web / load balancer outputs
+# -----------------------------------------------------------------------------
+
 output "alb_dns_name" {
   description = "DNS name of the application load balancer."
   value       = module.web.alb_dns_name
@@ -50,6 +61,10 @@ output "web_security_group_id" {
   description = "Security group ID attached to the web instances."
   value       = module.web.web_security_group_id
 }
+
+# -----------------------------------------------------------------------------
+# Bastion outputs
+# -----------------------------------------------------------------------------
 
 output "bastion_public_ip" {
   description = "Public IP address of the bastion host."

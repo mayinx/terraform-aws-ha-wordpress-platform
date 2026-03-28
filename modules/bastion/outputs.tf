@@ -1,5 +1,9 @@
 # Exposes the bastion identifiers needed for verification and for downstream access rules.
 
+# -----------------------------------------------------------------------------
+# Bastion outputs
+# -----------------------------------------------------------------------------
+
 output "bastion_public_ip" {
   description = "Public IP address of the bastion host."
   value       = aws_instance.this.public_ip

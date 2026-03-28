@@ -1,13 +1,44 @@
 #!/bin/bash
+
+# Terraform user-data template (.tftpl) for bootstrapping a WordPress EC2 instance.
+#
 # Bootstraps an Ubuntu web instance into a WordPress application server.
 # Installs Apache/PHP, downloads WordPress, writes wp-config.php, and starts Apache.
+#
+# This file is rendered by Terraform via templatefile(), which injects values such as
+# the database host, database name, database user, and database password.
+#
+# Solution origin:
+# This bootstrap approach follows the standard AWS EC2 user-data pattern for launch-time 
+# instance bootstrap + configuration - and combines it with a conventional WordPress-on-Linux 
+# installation flow. See also:
+# - AWS EC2 user data docs
+# - WordPress installation guide
+# - WordPress wp-config.php handbook
 
+# Exit on errors, undefined variables, and failed pipes.
+# -e: stop on command failure
+# -u: stop on undefined variable usage
+# -x: print commands while running (useful for debugging)
+# -o pipefail: fail the whole pipeline if one stage fails
 set -euxo pipefail
 
+# Send bootstrap output both to a log file and to the EC2 console/system logs.
+# This makes troubleshooting much easier if the instance does not come up correctly.
 exec > >(tee /var/log/wordpress-bootstrap.log | logger -t user-data -s 2>/dev/console) 2>&1
 
+# Prevent package installation prompts from blocking the bootstrap run.
 export DEBIAN_FRONTEND=noninteractive
 
+# -----------------------------------------------------------------------------
+# Install required packages
+# -----------------------------------------------------------------------------
+
+# Refresh the package index + install the required wordpress dependencies 
+# - apache2: web server
+# - php + related modules: runtime needed by WordPress
+# - mysql-client: lets the instance test DB connectivity
+# - curl / tar / openssl: download, unpack, and generate secrets
 apt-get update -y
 apt-get install -y \
   apache2 \
@@ -24,13 +55,31 @@ apt-get install -y \
   tar \
   openssl
 
+# Ensure Apache starts automatically after reboot.
 systemctl enable apache2
 
+# -----------------------------------------------------------------------------
+# Download and place WordPress
+# -----------------------------------------------------------------------------
+
+# Download the latest WordPress release archive.
 curl -fsSL https://wordpress.org/latest.tar.gz -o /tmp/wordpress.tar.gz
+
+# Remove the default web root contents before copying WordPress in.
 rm -rf /var/www/html/*
+
+# Extract WordPress into /tmp.
 tar -xzf /tmp/wordpress.tar.gz -C /tmp
+
+# Copy the extracted WordPress files into the Apache web root.
 cp -a /tmp/wordpress/. /var/www/html/
 
+# -----------------------------------------------------------------------------
+# Generate WordPress secret keys / salts
+# -----------------------------------------------------------------------------
+
+# Generate runtime-specific WordPress auth keys and salts.
+# These are written into wp-config.php and help secure cookies / sessions.
 AUTH_KEY="$(openssl rand -base64 48)"
 SECURE_AUTH_KEY="$(openssl rand -base64 48)"
 LOGGED_IN_KEY="$(openssl rand -base64 48)"
@@ -40,6 +89,12 @@ SECURE_AUTH_SALT="$(openssl rand -base64 48)"
 LOGGED_IN_SALT="$(openssl rand -base64 48)"
 NONCE_SALT="$(openssl rand -base64 48)"
 
+# -----------------------------------------------------------------------------
+# Create wp-config.php
+# -----------------------------------------------------------------------------
+
+# Write the WordPress configuration file with database settings injected by Terraform.
+# The ${...} placeholders below are replaced when Terraform renders this template.
 cat > /var/www/html/wp-config.php <<EOF
 <?php
 define( 'DB_NAME', '${db_name}' );
@@ -69,6 +124,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 require_once ABSPATH . 'wp-settings.php';
 EOF
 
+# -----------------------------------------------------------------------------
+# Wait for the database
+# -----------------------------------------------------------------------------
+
+# Wait until the RDS endpoint responds before continuing.
+# This avoids Apache serving a half-ready application during early bootstrap.
 for i in $(seq 1 30); do
   if mysqladmin ping -h "${db_host}" -u "${db_user}" -p"${db_password}" --silent; then
     break
@@ -76,6 +137,11 @@ for i in $(seq 1 30); do
   sleep 10
 done
 
+# -----------------------------------------------------------------------------
+# Enable Apache settings required by WordPress
+# -----------------------------------------------------------------------------
+
+# Allow .htaccess-based rewrite rules in the WordPress document root.
 cat > /etc/apache2/conf-available/wordpress-permalinks.conf <<'EOF'
 <Directory /var/www/html>
     AllowOverride All
@@ -83,12 +149,23 @@ cat > /etc/apache2/conf-available/wordpress-permalinks.conf <<'EOF'
 </Directory>
 EOF
 
+# Enable Apache rewrite support and the custom WordPress config.
 a2enmod rewrite
 a2enconf wordpress-permalinks
 
+# -----------------------------------------------------------------------------
+# Set ownership and permissions
+# -----------------------------------------------------------------------------
+
+# Make the Apache user own the WordPress files.
 chown -R www-data:www-data /var/www/html
+
+# Set directory + file permissions.
 find /var/www/html -type d -exec chmod 755 {} \;
 find /var/www/html -type f -exec chmod 644 {} \;
 
+# Remove the Apache default landing page if it still exists.
 rm -f /var/www/html/index.html
+
+# Restart Apache so all configuration and content changes are active.
 systemctl restart apache2

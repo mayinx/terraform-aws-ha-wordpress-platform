@@ -2,6 +2,10 @@
 # This module creates the public ALB, the application security groups,
 # the launch template, and the Auto Scaling Group for the WordPress EC2 instances.
 
+# -----------------------------------------------------------------------------
+# Data sources
+# -----------------------------------------------------------------------------
+
 data "aws_ami" "ubuntu" {
   most_recent = true
   owners      = ["099720109477"]
@@ -22,9 +26,17 @@ data "aws_ami" "ubuntu" {
   }
 }
 
+# -----------------------------------------------------------------------------
+# Local values
+# -----------------------------------------------------------------------------
+
 locals {
   name_prefix = "${var.project_name}-${var.environment}"
 }
+
+# -----------------------------------------------------------------------------
+# Security groups
+# -----------------------------------------------------------------------------
 
 resource "aws_security_group" "alb" {
   name        = "${local.name_prefix}-alb-sg"
@@ -86,6 +98,10 @@ resource "aws_security_group" "web" {
   }
 }
 
+# -----------------------------------------------------------------------------
+# Load balancer
+# -----------------------------------------------------------------------------
+
 resource "aws_lb" "this" {
   name               = "${local.name_prefix}-alb"
   internal           = false
@@ -131,6 +147,10 @@ resource "aws_lb_listener" "http" {
   }
 }
 
+# -----------------------------------------------------------------------------
+# Launch template
+# -----------------------------------------------------------------------------
+
 resource "aws_launch_template" "this" {
   name_prefix   = "${local.name_prefix}-lt-"
   image_id      = data.aws_ami.ubuntu.id
@@ -161,6 +181,10 @@ resource "aws_launch_template" "this" {
     }
   }
 }
+
+# -----------------------------------------------------------------------------
+# Auto Scaling Group
+# -----------------------------------------------------------------------------
 
 resource "aws_autoscaling_group" "this" {
   name                      = "${local.name_prefix}-asg"

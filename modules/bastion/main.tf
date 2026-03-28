@@ -2,6 +2,10 @@
 # This module creates an SSH key pair, a restricted bastion security group,
 # and a public EC2 instance in the first public subnet.
 
+# -----------------------------------------------------------------------------
+# Data sources
+# -----------------------------------------------------------------------------
+
 data "aws_ami" "ubuntu" {
   most_recent = true
   owners      = ["099720109477"]
@@ -22,9 +26,17 @@ data "aws_ami" "ubuntu" {
   }
 }
 
+# -----------------------------------------------------------------------------
+# Local values
+# -----------------------------------------------------------------------------
+
 locals {
   name_prefix = "${var.project_name}-${var.environment}"
 }
+
+# -----------------------------------------------------------------------------
+# SSH key pair
+# -----------------------------------------------------------------------------
 
 resource "aws_key_pair" "this" {
   key_name   = "${local.name_prefix}-bastion-key"
@@ -34,6 +46,10 @@ resource "aws_key_pair" "this" {
     Name = "${local.name_prefix}-bastion-key"
   }
 }
+
+# -----------------------------------------------------------------------------
+# Bastion security group
+# -----------------------------------------------------------------------------
 
 resource "aws_security_group" "bastion" {
   name        = "${local.name_prefix}-bastion-sg"
@@ -60,6 +76,10 @@ resource "aws_security_group" "bastion" {
     Name = "${local.name_prefix}-bastion-sg"
   }
 }
+
+# -----------------------------------------------------------------------------
+# Bastion instance
+# -----------------------------------------------------------------------------
 
 resource "aws_instance" "this" {
   ami                         = data.aws_ami.ubuntu.id

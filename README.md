@@ -208,6 +208,7 @@ The deployment was validated through:
   - ALB
   - Auto Scaling Group
   - Multi-AZ RDS
+
 - Terraform outputs return the expected infrastructure identifiers after apply
 - The WordPress site is reachable through the ALB DNS name
 - The WordPress installation wizard loads successfully in the browser
@@ -349,4 +350,4 @@ Provision a WordPress platform on AWS with Terraform using a modular IaC structu
 - Successful plan / apply / destroy flow
 - AWS Console validation screenshots
 - Browser-based WordPress proof
-- Reproducible documentation (here delivered in `README.md`, `docs/SETUP.md`, `docs/RUNBOOK.md`, and `docs/IMPLEMENTATION.md`
+- Reproducible documentation (here delivered in `README.md`, `docs/SETUP.md`, `docs/RUNBOOK.md`, and `docs/IMPLEMENTATION.md`)

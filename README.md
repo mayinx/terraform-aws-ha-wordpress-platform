@@ -200,20 +200,32 @@ The deployment was validated through:
 
 - Terraform initializes and validates successfully
 - The saved plan shows the intended AWS resource set before apply
-- The stack deploys successfully into AWS with:
-  - custom VPC
-  - 4 subnets
-  - dual NAT gateways
-  - bastion host
-  - ALB
-  - Auto Scaling Group
-  - Multi-AZ RDS
-
-- Terraform outputs return the expected infrastructure identifiers after apply
-- The WordPress site is reachable through the ALB DNS name
-- The WordPress installation wizard loads successfully in the browser
+- The full stack deploys successfully into AWS setting up the desired resource infrastructure (see below)
+- WordPress is reachable through the ALB DNS name. The WordPress installation wizard loads successfully in the browser and a sample page is displayed after site setup. 
 - AWS Console evidence exists for both creation and destruction phases
-- Terraform destroys the full stack successfully after validation
+- The stack can be destroyed cleanly again after validation via Terraform
+
+**Representative grouped infrastructure inventory (`make plan-counts`):**
+
+~~~text
+1x aws_autoscaling_group
+1x aws_db_instance
+1x aws_db_subnet_group
+2x aws_eip
+1x aws_instance
+1x aws_internet_gateway
+1x aws_key_pair
+1x aws_launch_template
+1x aws_lb
+1x aws_lb_listener
+1x aws_lb_target_group
+2x aws_nat_gateway
+3x aws_route_table
+4x aws_route_table_association
+4x aws_security_group
+4x aws_subnet
+1x aws_vpc
+~~~
 
 ---
 

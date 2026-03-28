@@ -7,14 +7,14 @@
 > For the local setup path, IAM user creation, AWS CLI profile configuration, and AWS Budget guardrails, see: **[docs/SETUP.md](SETUP.md)**.
 
 ---
-
+ 
 ## 📌 Index (top-level)
 
 - [**Purpose / Goal**](#purpose--goal)
 - [**Definition of done**](#definition-of-done)
 - [**Preconditions**](#preconditions)
 - [**Step 01 - Translate the exercise goal into a concrete target architecture**](#step-01---translate-the-exercise-goal-into-a-concrete-target-architecture)
-- [**Step 02 - Scaffold the Terraform project structure and root module**](#step-02---scaffold-the-terraform-project-structure-and-root-module)
+- [**Step 02 - Scaffold the Terraform project structure and implement the base configuration**](#step-02---scaffold-the-terraform-project-structure-and-implement-the-nase-configuration)
 - [**Step 03 - Implement the network module**](#step-03---implement-the-network-module)
 - [**Step 04 - Implement the database module**](#step-04---implement-the-database-module)
 - [**Step 05 - Implement the web tier module**](#step-05---implement-the-web-tier-module)
@@ -33,10 +33,28 @@
 
 - Provision a **highly available WordPress platform on AWS** with Terraform.
 - Implement the infrastructure in a **modular IaC structure** that is readable, reusable, and easy to rerun.
-- Validate the deployment through a real **plan -> apply -> browser proof -> destroy** lifecycle.
-- Capture evidence that proves both:
-  - the infrastructure was **created**
-  - the platform **actually worked**
+- Validate the deployment through a **plan -> apply -> browser proof -> destroy** lifecycle.
+- Capture evidence that proves:
+  - The complete infrastructure was **created** via Terraform 
+  - The deployed platform **actually worked** in the browser (Wordpress reachable)
+  - The commplete infrastructure was **destoyed** again via Terraform after validation  
+
+
+
+> [!NOTE]
+> **Terraform**  
+> Terraform is an **Infrastructure as Code (IaC) tool** that allows the declarative description + creation of infrastructure via configuration files - instead of creating that infrastructure manually in a cloud console.  
+> Terrafdorm uses **providers** to communicate with external Cloud Provider APIs such as AWS in order to create, update, or destroy infrastructure so that the real environment matches the declared configuration.  
+> In this project, Terraform is the **control layer for the AWS infrastructure**: 
+> - it provisions and manages the AWS resources such as the VPC, subnets, NAT gateways, security groups, ALB, EC2 instances, Auto Scaling Group, and RDS database
+> - and it deploys the WordPress platform onto that infrastructure
+
+> [!NOTE]
+> **Terraform + Kubernetes**  
+> Though this poroject doesn't utilize Kubernetes (the WordPress platform is deployed directly on the Terraform-managed AWS infrastructure), it's worth noting the role of Terraform when used in combination with Kubernetes: 
+> In many projects, Terraform is used to create the infrastructure that Kubernetes later runs on. So Terraform and Kubernetes can play nicely together, but solve different problems:
+> - **Terraform** provisions and configures infrastructure or platform resources 
+> - **Kubernetes** runs and orchestrates containerized applications on a cluster. 
 
 ## Definition of done
 
@@ -53,7 +71,7 @@ The project is considered done when the following conditions are met:
 - The AWS Console shows the created infrastructure.
 - WordPress is reachable via the ALB DNS name in a browser.
 - The stack is destroyed again successfully.
-- The repository contains a readable README, setup guide, implementation log, runbook, and evidence inventory.
+- The repository contains a README, setup guide, implementation log, runbook, and evidence inventory.
 
 ## Preconditions
 
@@ -74,9 +92,9 @@ See **[docs/SETUP.md](SETUP.md)** for that preparation path.
 
 ### Rationale
 
-Before writing Terraform code, the exercise requirements had to be translated into a buildable AWS target shape.
+Before writing Terraform code, the exercise requirements must be translated into a **buildable AWS target shape**.
 
-The final implementation target was:
+**The final implementation target:**
 - 1 custom VPC
 - 2 public subnets
 - 2 private subnets
@@ -86,11 +104,6 @@ The final implementation target was:
 - Auto Scaling Group with min 1 / max 2
 - private RDS MySQL layer
 - bastion host for controlled SSH entry
-
-> [!NOTE]
-> **Terraform**  
-> Terraform is an **Infrastructure as Code tool**. It talks to provider APIs and provisions infrastructure resources such as VPCs, subnets, load balancers, databases, and EC2 instances.  
-> In this project, Terraform is responsible for the **AWS infrastructure layer**.
 
 > [!NOTE]
 > **What makes this platform “highly available”:**  
@@ -103,19 +116,22 @@ The final implementation target was:
 
 ### Result
 
-A clear target architecture existed before implementation started, which prevented random resource creation and helped keep the code aligned with the exercise.
+A clear target architecture exists as base for the further implementation, which prevents random resource creation.
 
 ---
 
-## Step 02 - Scaffold the Terraform project structure and root module + implement the Terraform base configuration
+## Step 02 - Scaffold the Terraform project structure and implement the base configuration
 
 ### Rationale
 
-A clean scaffold makes Terraform work easier to understand and easier to extend incrementally.
-The project was therefore split into:
-- a **root "module"** for wiring
-- dedicated **child modules** for each major infrastructure concern
-- a separate **`user_data/` directory** for EC2 bootstrap logic (Wordpress setup)
+A clean scaffold makes the Terraform configuration easier to understand and extend incrementally. The project was therefore split into:
+- **1.** a **root module** for wiring
+- **2.** dedicated **child modules** for each major infrastructure concern:
+    - `network` 
+    - `bastion` 
+    - `database` 
+    - `web`
+- **3.** a separate **`user_data/` directory** for EC2 bootstrap logic (Wordpress setup)
 
 ### Initial scaffold commands
 
@@ -171,16 +187,26 @@ The created structure follows common Terraform project conventions:
 - **child modules** for separate infrastructure concerns
 - a separate **template file** for EC2 bootstrap logic that would otherwise clutter the HCL files
 
-Concretely:
+**How the created main Terraform files work together:**  
 
+1. The **root files** define the overall project interface and wiring:
 - **`main.tf`** wires the child modules together.
-- **`providers.tf`** keeps provider config separate.
-- **`versions.tf`** pins Terraform/provider requirements.
-- **`variables.tf`** + **`outputs.tf`** make inputs/outputs easier to inspect.
-- **`modules/*`** separates infrastructure responsibilities.
-- **`user_data/wordpress.sh.tftpl`** keeps the EC2 bootstrap logic out of the main HCL files.
+- **`providers.tf`** defines how Terraform talks to AWS and keeps provider config separate.
+- **`versions.tf`** declares the Terraform / provider requirements
+- **`variables.tf`** defines the configurable inputs of the project 
+- **`outputs.tf`** publishes important values such as VPC ID, subnet IDs, ALB DNS name, bastion public IP, and DB endpoint for later verification
 
-**Sources:** This structure is based on standard Terraform module / provider / variable patterns and the referenced sources listed at the end of this document.
+2. The **child modules** define the actual AWS resources for each infrastructure concern and separate infrastructure responsibilities:
+- **`modules/network`** = networking foundation
+- **`modules/database`** = RDS layer
+- **`modules/web`** = ALB + launch template + Auto Scaling Group
+- **`modules/bastion`** = administrative SSH entrypoint
+
+3. **`user_data/wordpress.sh.tftpl`** defines the EC2 bootstrap logic and keeps this out of the main HCL files.
+
+**Source direction:** 
+
+This structure is based on standard Terraform module, provider, and variable patterns, supported by the referenced sources listed at the end of this document.
 
 > [!NOTE]
 > **Terraform AWS provider**  
@@ -193,6 +219,11 @@ Concretely:
 >   - which **AWS region** to target
 >   - which **local AWS CLI profile** to use
 
+> [!NOTE]
+> **Terraform outputs**  
+> Terraform outputs are named values that Terraform prints after `apply` and makes available at the root level.  
+> In this project, outputs are used to expose the most important verification values, such as the **ALB DNS name**, **bastion public IP**, **DB endpoint**, **subnet IDs**, and **VPC ID**.
+
 ### Implement Terraform Base Configuration
 
 Next step is to fill the still empty Terraform structure with the actual Terraform configuration needed for the target AWS platform.
@@ -202,7 +233,7 @@ Next step is to fill the still empty Terraform structure with the actual Terrafo
 - The **module files** to define the concrete AWS resources for each infrastructure concern
 - The **template file** under `user_data/` to define the EC2 bootstrap logic for WordPress installation
 
-**The implementation followes a combination of:**
+**The implementation follows a combination of:**
 - the exercise requirements
 - standard Terraform module / provider / variable patterns
 - standard AWS resource patterns
@@ -220,7 +251,7 @@ Next step is to fill the still empty Terraform structure with the actual Terrafo
   This tells Terraform which local AWS CLI profile to reuse for AWS API access.
 
 - **`my_ip_cidr`** and **`public_key_path`** (also in `variables.tf`)  
-  These values controll bastion SSH access and the SSH public key uploaded into AWS.
+  These values control bastion SSH access and the SSH public key uploaded into AWS.
 
 - **Custom CIDR ranges** in the network module  
   The project explicitly defines:
@@ -229,7 +260,7 @@ Next step is to fill the still empty Terraform structure with the actual Terrafo
   - public subnet 2: `10.0.2.0/24`
   - private subnet 1: `10.0.11.0/24`
   - private subnet 2: `10.0.12.0/24`  
-  These ranges were chosen deliberately in Terraform rather than inherited from the AWS default VPC.
+  These ranges were chosen deliberately in Terraform rather than inherited from the AWS default VPC. This way the network layout stays explicit, reproducible, and easy to reason about during both implementation and review.
 
 - **`db_name`, `db_user`, `db_password`** in the root variables / database wiring  
   These values define the database connection to be used by WordPress during bootstrap and runtime.
@@ -238,13 +269,22 @@ Next step is to fill the still empty Terraform structure with the actual Terrafo
   These influence both resource sizing and cost.
 
 - **Dynamic AMI and AZ lookup** in the module configuration  
-  Instead of hardcoding an AMI ID or fixed AZ list, Terraform data sources are used to discover those values "at plan/apply time."
+  The project does not hardcode a specific Ubuntu image ID or a manually typed list of Availability Zones.  
+  Instead, Terraform **data sources** are used to look up:
+  - the currently available target **Availability Zones (AZs)** in `eu-west-3`
+  - a current matching Ubuntu **AMI (Amazon Machine Image)** for the EC2 instances  
+  This makes the configuration less brittle and more reusable, because it does not depend on one frozen AMI ID or one manually maintained AZ list.  
 
 - **`user_data_template_path`** in the web module wiring  
-  This linkes the launch template to the external EC2 bootstrap template file for WordPress setup.
+  This links the launch template to the external EC2 bootstrap template file for WordPress setup.
 
 For the **source references** behind these patterns, see the grouped **Sources** section at the end of this document.
 
+> [!NOTE]
+> **AMI and AZ**  
+> An **AMI (Amazon Machine Image)** is the machine image used to launch an EC2 instance.  
+> An **AZ (Availability Zone)** is one physically separate AWS datacenter location within a region such as `eu-west-3`.  
+> In this project, both were discovered dynamically instead of being hardcoded.
 
 ### Result
 
@@ -256,8 +296,7 @@ A predictable Terraform layout exists as base for the definition of the real res
 
 ### Rationale
 
-Networking must be defined first - since it servces as the base fore everything else.
-The ALB, bastion, web tier, and database all need a VPC and the correct subnet layout.
+Serving as the base for everything else, Networking must be defined first. The ALB, bastion, web tier, and database all rely on a VPC and the correct subnet layout.
 
 > [!NOTE]
 > **VPC**  
@@ -265,13 +304,28 @@ The ALB, bastion, web tier, and database all need a VPC and the correct subnet l
 
 > [!NOTE]
 > **Multi-AZ networking**  
-> “Multi-AZ networking” refers to teh distribution of key infrastructure components across more than one Availability Zone.  
+> “Multi-AZ networking” refers to the distribution of key infrastructure components across more than one Availability Zone.  
 > In our case the network spans **eu-west-3a** and **eu-west-3b** so the design is not tied to a single AZ.
 
 > [!NOTE]
 > **NAT + NAT gateways**  
 > **NAT** stands for **Network Address Translation**. A **NAT gateway** lets resources in a **private subnet** reach the internet **outbound** without becoming directly reachable **inbound** from the internet.  
 > In this project, the private WordPress instances need outbound internet access for bootstrap actions such as package installation and downloading WordPress.
+
+> [!NOTE]
+> **Route table**  
+> A **route table** defines where network traffic from a subnet should be sent.  
+> In this project, the public route table sends internet-bound traffic to the **Internet Gateway**, while each private route table sends outbound internet traffic to its corresponding **NAT gateway**.
+
+> [!NOTE]
+> **Security group**  
+> A **security group** is a stateful virtual firewall attached to AWS resources such as EC2 instances, ALBs, and RDS databases.  
+> In this project, security groups define which traffic is allowed between the internet, the ALB, the bastion host, the WordPress EC2 instances, and the database.
+
+> [!NOTE]
+> **Elastic IP (EIP)**  
+> An **Elastic IP** is a static public IPv4 address allocated in AWS.  
+> In this project, an Elastic IP was attached to each NAT gateway so the private subnets could use stable outbound internet access through those NAT gateways.
 
 ### What the network module creates
 
@@ -306,12 +360,12 @@ So the pattern is:
 - **we define the subnet ranges**
 - **AWS assigns concrete IPs inside those ranges**
 
-### Why custom CIDR ranges were used
+### Custom CIDR range rationale
 
-The project uses a **dedicated custom VPC** instead of the AWS default VPC, because the layout should be reproducible, and easy to reason about.  
+The project uses a **dedicated custom VPC** instead of the AWS default VPC, because the layout should be reproducible, explicit, and easy to reason about.  
 Choosing the CIDR ranges explicitly makes it much easier to understand the network design.
 
-### Why 2 NAT gateways were used
+### NAT gateways rationale
 
 The project uses **one NAT gateway per public subnet**, **because the exercise explicitly required that design** and because it avoids turning private-subnet outbound access into a single-AZ dependency.
 
@@ -363,7 +417,12 @@ WordPress needs a relational database backend.
 The exercise explicitly required an `aws_db_instance` on `db.t3.micro`, so the database layer had to be implemented as a real AWS RDS resource.
 
 > [!NOTE]
-> **What is a private Multi-AZ RDS layer?**  
+> **RDS**  
+> **Amazon RDS** is AWS’s managed relational database service.  
+> In this project, RDS provides the MySQL database backend for WordPress so that the database does not need to be installed and operated manually on an EC2 instance.
+
+> [!NOTE]
+> **Private Multi-AZ RDS layer**  
 > In this project, the database is an **RDS MySQL instance** that is **not publicly accessible** and is placed behind a **DB subnet group** spanning the private subnets in two Availability Zones.  
 > “Multi-AZ” means the managed database service is configured for higher availability across more than one Availability Zone.
 
@@ -391,50 +450,53 @@ The Terraform plan then expanded from a network-only plan into a network + datab
 
 ### Rationale
 
-The exercise required a WordPress web tier on EC2, public HTTP access, and an Auto Scaling Group behind an ALB.
-That is the core application path of the whole platform.
+The exercise requires a WordPress web tier on EC2, public HTTP access, and an Auto Scaling Group behind an ALB. That is the core application path of the whole platform.
+
+The web module depends on the earlier **network** and **database** layers: it needs the VPC ID, public/private subnet IDs, and the database endpoint before the ALB, launch template, and Auto Scaling Group can be configured correctly.
 
 > [!NOTE]
-> **What is an ALB?**  
+> **ALB**  
 > An **ALB (Application Load Balancer)** is the public HTTP entrypoint of the platform.  
 > It receives incoming HTTP requests and forwards them to healthy application targets behind it.
 
 > [!NOTE]
-> **What is a target group?**  
+> **Target group**  
 > A **target group** is the set of application targets the ALB forwards traffic to.  
 > In this project, the WordPress EC2 instances from the Auto Scaling Group are the targets.
 
 > [!NOTE]
-> **What is an HTTP listener?**  
+> **HTTP listener**  
 > A **listener** is the ALB component that listens on a port / protocol combination and decides what to do with incoming traffic.  
 > Here, the ALB has an **HTTP listener on port 80** that forwards traffic to the WordPress target group.
 
 > [!NOTE]
-> **What is a launch template?**  
+> **Launch template**  
 > A **launch template** is the reusable EC2 instance blueprint for the Auto Scaling Group.  
 > It defines things such as the AMI, instance type, security groups, and bootstrap `user_data`.
 
 > [!NOTE]
-> **What is an Auto Scaling Group?**  
+> **Auto Scaling Group**  
 > An **Auto Scaling Group (ASG)** manages a fleet of EC2 instances and tries to keep the desired number running.  
 > In this project, the ASG manages the WordPress web instances with **min 1 / max 2 / desired 2**.
 
 > [!NOTE]
-> **What is EC2 `user_data`?**  
+> **EC2 `user_data`**  
 > `user_data` is a startup script that EC2 runs during instance initialization.  
-> Here it is used to install Apache/PHP, download WordPress, generate `wp-config.php`, and prepare the application automatically.
+> Here we use it to install Apache/PHP, download WordPress, generate `wp-config.php`, and prepare the application automatically (see `user_data/wordpress.sh.tftpl`).
 
-### What the web module creates
+### Resources created by the web module
+
+The web module creates the following main resources:
 
 - dynamic Ubuntu AMI lookup
 - ALB security group
-- web security group
+- Web security group
 - ALB
-- target group
+- Target group
 - HTTP listener
 - launch template
 - Auto Scaling Group
-- WordPress bootstrap via `user_data/wordpress.sh.tftpl`:
+- WordPress bootstrap via `user_data/wordpress.sh.tftpl` 
 
 ### EC2 Wordpress Bootstrap approach (`user_data/wordpress.sh.tftpl`) 
 
@@ -444,7 +506,7 @@ The EC2 bootstrap logic in `user_data/wordpress.sh.tftpl` combines:
 - the conventional **WordPress installation flow on Linux**
 - the standard **`wp-config.php` database / auth-key configuration model**
 
-Further deatils can be found in the bootstrap script and in the sources section. 
+Further details are available in the bootstrap script itself and in the grouped Sources section at the end of this document.
 
 ### Terraform data sources
 
@@ -478,18 +540,17 @@ The full plan now showed the web layer on top of the network + DB layer, includi
 
 The web instances run in private subnets, so a controlled administrative entrypoint was needed.
 
-> [!NOTE]
-> **What is bastion access?**  
-> A **bastion host** is a small public entrypoint used for controlled administrative SSH access into an otherwise private environment.  
-> In this project, the operator can SSH to the bastion first and then reach private resources from inside the VPC.
+The bastion module depends on the **network** layer because the bastion host must be placed into a public subnet inside the custom VPC and protected by its own security group.
 
 > [!NOTE]
-> **What is restricted bastion host access?**  
+> **Bastion access**  
+> A **bastion host** is a small public entrypoint used for controlled administrative SSH access into an otherwise private environment.  
+> In this project, the operator can SSH to the bastion first and then reach private resources from inside the VPC.
 > The bastion is not left open to the whole internet on SSH.  
 > Instead, its security group only allows SSH from the specific `my_ip_cidr` value, i.e. the current trusted public egress IP.
 
 > [!NOTE]
-> **What is SSH key-pair provisioning here?**  
+> **SSH key-pair provisioning**  
 > The project creates an AWS **key pair resource** from the local public SSH key so the bastion instance can be accessed without passwords.
 
 ### What the bastion module creates
@@ -549,7 +610,7 @@ This includes Make targets for plan summaries and graphs, to make the raw Terraf
 
 ### Result
 
-The Makefile provides the main project command entrypoints (see RUNBOOK.md), while the encapsulated Terraform commands remain documented here for traceability and "learning support".
+The Makefile provides the main project command entrypoints, while the underlying Terraform commands remain documented here for traceability.
 
 ---
 
@@ -557,7 +618,7 @@ The Makefile provides the main project command entrypoints (see RUNBOOK.md), whi
 
 ### Rationale
 
-Before the first real `apply`, the Terraform plan needs to be checked + verified to ensure, that the complete intended stack appeares in the plan - and to reduce avoidable (and potentially costly) cloud mistakes:  
+Before the first real `apply`, the Terraform plan needs to be checkedverified carefully to ensure that the complete intended stack appears in the plan and to reduce avoidable (and potentially costly) mistakes:  
 
 ### Commands
 
@@ -580,7 +641,7 @@ The final pre-apply plan showed the complete resource set across:
 
 **Representative grouped plan output (`make plan-counts`) before the first real apply:**
 
-The grouped view was answeres the high-level question “what is Terraform about to create?” much faster than the full raw plan:
+`make-plan-counts` delivers a **grouped view** that allows a quick inspection of what Terraform is about to create once we enter `make apply`; the result is much easier to inspect than the full raw plan:
 
 ```text
 1x aws_autoscaling_group
@@ -764,7 +825,7 @@ Evidence files:
 
 ### Why some resources can appear briefly after destroy
 
-A few AWS resource views can lag briefly after Terraform destroy.
+Some AWS resource views can lag briefly after Terraform destroy.
 For this project, transient lingering entries in AWS views were checked and interpreted correctly:
 - NAT gateways were already in a terminated/deleting cleanup state
 - EC2 instances were already terminated
@@ -866,7 +927,6 @@ The AWS Budget is a useful warning layer, but the real stop button is still `ter
 │       ├── main.tf
 │       ├── outputs.tf
 │       └── variables.tf
-├── Makefile
 ├── providers.tf
 ├── README.md
 ├── terraform.tfvars.example

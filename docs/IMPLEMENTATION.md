@@ -148,9 +148,8 @@ touch modules/bastion/{main.tf,variables.tf,outputs.tf}
 - `modules/*` separates infrastructure responsibilities.
 - `user_data/wordpress.sh.tftpl` keeps the EC2 bootstrap logic out of the main HCL files.
 
-
 > [!NOTE]
-> **The Terraform AWS provider?**  
+> **Terraform AWS provider**  
 > The **Terraform AWS provider** is the plugin Terraform uses to talk to AWS APIs.  
 > It is what makes resource blocks such as `aws_vpc`, `aws_subnet`, `aws_db_instance`, and `aws_lb` actually work.  
 > In this project:

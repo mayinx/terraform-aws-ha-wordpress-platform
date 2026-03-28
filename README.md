@@ -337,16 +337,16 @@ Provision a WordPress platform on AWS with Terraform using a modular IaC structu
 - NAT gateway in each public subnet
 - WordPress web tier on `t2.micro` instances
 - Auto Scaling Group with min `1` / max `2`
-- automatic infrastructure lookup where relevant (for example Availability Zones / AMI)
+- Automatic infrastructure lookup where relevant (for example Availability Zones / AMI)
 - `aws_db_instance` database layer on `db.t3.micro`
 - ALB for public HTTP access
-- bastion host
-- modular Terraform code
-- no hardcoded secrets in committed source
+- Bastion host
+- Modular Terraform code
+- No hardcoded secrets in committed source
 
 **Expected proof / deliverables covered here:**
-- modular Terraform repository
-- successful plan / apply / destroy flow
+- Modular Terraform repository
+- Successful plan / apply / destroy flow
 - AWS Console validation screenshots
-- browser-based WordPress proof
-- reproducible documentation in `README.md`, `docs/SETUP.md`, `docs/RUNBOOK.md`, and `docs/IMPLEMENTATION.md`
+- Browser-based WordPress proof
+- Reproducible documentation (here delivered in `README.md`, `docs/SETUP.md`, `docs/RUNBOOK.md`, and `docs/IMPLEMENTATION.md`

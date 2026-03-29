@@ -1,15 +1,28 @@
 # Makefile for the Terraform AWS WordPress platform project.
-# Use these targets as the standard human-friendly entrypoints for common lifecycle commands.
+# Standard project commands for Terraform lifecycle, AWS verification, and plan inspection.
+
+# -----------------------------------------------------------------------------
+# Tooling and local environment defaults
+# -----------------------------------------------------------------------------
 
 TF              := terraform
 PLAN_FILE       := tfplan
-AWS_PROFILE     ?= terraform-exam
+AWS_CLI_PROFILE	?= aws-personal-admin
 AWS_REGION      ?= eu-west-3
 
-.PHONY: help fmt init validate plan plan-save plan-summary plan-counts apply destroy output show clean aws-whoami aws-azs
+# -----------------------------------------------------------------------------
+# Make targets
+# -----------------------------------------------------------------------------
+
+.PHONY: help sanity fmt init validate plan plan-save plan-summary plan-counts apply destroy output show clean aws-whoami aws-azs plan-json graph-plan-svg graph-plan-png rover-plan rover-image inframap-png inframap-state-png
+
+# -----------------------------------------------------------------------------
+# Help
+# -----------------------------------------------------------------------------
 
 help:
 	@echo "Available targets:"
+	@echo "  make sanity        - Run AWS identity/AZ checks and a full non-apply Terraform planning check"
 	@echo "  make fmt           - Format all Terraform files recursively"
 	@echo "  make init          - Initialize Terraform providers and modules"
 	@echo "  make validate      - Validate the Terraform configuration"
@@ -23,7 +36,33 @@ help:
 	@echo "  make show          - Show the saved plan file in human-readable form"
 	@echo "  make clean         - Remove local Terraform plan artifacts"
 	@echo "  make aws-whoami    - Show the currently active AWS identity"
-	@echo "  make aws-azs       - Show available AZs in $(AWS_REGION)"
+	@echo "  make aws-azs       - Show available AZs in $(AWS_REGION)"	
+	@echo "  make plan-json     - Export the saved plan to plan.json"
+	@echo "  make graph-plan-svg - Generate the Terraform plan graph as SVG"
+	@echo "  make graph-plan-png - Generate the Terraform plan graph as PNG"
+	@echo "  make rover-plan    - Start Rover locally from plan.json"
+	@echo "  make rover-image   - Generate a static Rover image artifact"
+	@echo "  make inframap-png  - Generate a provider-focused graph from the Terraform configuration"
+	@echo "  make inframap-state-png - Generate a provider-focused graph from Terraform state"	
+
+
+# -----------------------------------------------------------------------------
+# Sanity check
+# -----------------------------------------------------------------------------
+
+sanity:
+	@# Run a non-apply end-to-end sanity check for AWS access and Terraform planning.
+	$(MAKE) aws-whoami
+	$(MAKE) aws-azs
+	$(MAKE) init
+	$(MAKE) validate
+	$(MAKE) plan-save
+	$(MAKE) plan-summary
+	$(MAKE) plan-counts
+
+# -----------------------------------------------------------------------------
+# Terraform lifecycle
+# -----------------------------------------------------------------------------
 
 fmt:
 	@# Format all Terraform files in the root module and submodules.
@@ -54,7 +93,7 @@ plan-counts:
 	$(TF) show -json $(PLAN_FILE) | jq -r '[.resource_changes[] | select([.change.actions[]] | any(. == "create" or . == "update" or . == "delete")) | .type] | group_by(.) | map("\(length)x \(.[0])") | .[]'
 
 apply:
-	@# Apply the previously saved plan file so the exact reviewed plan gets executed.
+	@# Apply the previously saved plan file so the reviewed plan is executed exactly as inspected.
 	$(TF) apply $(PLAN_FILE)
 
 destroy:
@@ -70,28 +109,36 @@ show:
 	$(TF) show $(PLAN_FILE)
 
 clean:
-	@# Remove local plan artifacts that are safe to recreate.
-	rm -f $(PLAN_FILE)
+	@# Remove local plan and visualization artifacts that are safe to recreate.
+	rm -f $(PLAN_FILE) plan.json terraform-plan-graph.svg terraform-plan-graph.png inframap.png inframap-state.png	
+
+# -----------------------------------------------------------------------------
+# AWS verification helpers
+# -----------------------------------------------------------------------------
 
 aws-whoami:
-	@# Show which AWS identity/profile is currently active for this shell.
-	AWS_PROFILE=$(AWS_PROFILE) aws sts get-caller-identity
+	@# Show which AWS identity is currently active for the configured AWS CLI profile.
+	AWS_PROFILE=$(AWS_CLI_PROFILE) aws sts get-caller-identity
 
 aws-azs:
 	@# Show the available Availability Zones in the selected AWS region.
-	AWS_PROFILE=$(AWS_PROFILE) aws ec2 describe-availability-zones --region $(AWS_REGION) --query 'AvailabilityZones[].ZoneName' --output table
+	AWS_PROFILE=$(AWS_CLI_PROFILE) aws ec2 describe-availability-zones --region $(AWS_REGION) --query 'AvailabilityZones[].ZoneName' --output table
+
+# -----------------------------------------------------------------------------
+# Plan export and visualization helpers
+# -----------------------------------------------------------------------------
 
 plan-json:
 	@# Export the saved Terraform plan as JSON for jq-based inspection and Rover.
-	terraform show -json $(PLAN_FILE) > plan.json
+	$(TF) show -json $(PLAN_FILE) > plan.json
 
 graph-plan-svg:
 	@# Generate a Terraform dependency graph from the current plan as SVG.
-	terraform graph -type=plan | dot -Tsvg > terraform-plan-graph.svg
+	$(TF)  graph -type=plan | dot -Tsvg > terraform-plan-graph.svg
 
 graph-plan-png:
 	@# Generate a Terraform dependency graph from the current plan as PNG.
-	terraform graph -type=plan | dot -Tpng > terraform-plan-graph.png
+	$(TF) graph -type=plan | dot -Tpng > terraform-plan-graph.png
 
 rover-plan:
 	@# Start Rover locally in Docker using the generated plan.json file.

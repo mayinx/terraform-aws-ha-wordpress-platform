@@ -5,7 +5,12 @@
 DevOps / Infrastructure-as-Code project demonstrating how to provision a highly available WordPress platform on AWS with Terraform, using a custom VPC, public/private multi-AZ subnet layout, dual NAT gateways, an Application Load Balancer, an Auto Scaling web tier, a bastion host, and a private Multi-AZ RDS database.
 
 > **Implementation note:** This project focuses on **declarative infrastructure provisioning, validation, and clean teardown**.  
-> The stack was successfully created, validated through AWS console evidence and browser checks/screenshots, and then destroyed again to avoid unnecessary cloud costs.
+> The stack was successfully created, validated through AWS Console evidence and browser checks/screenshots, and then destroyed again to avoid unnecessary cloud costs.
+
+> **Documentation note:** This repository includes a full supporting documentation set:
+> - [docs/SETUP.md](docs/SETUP.md) for local Terraform setup, IAM, AWS CLI, and budget guardrails
+> - [docs/RUNBOOK.md](docs/RUNBOOK.md) for the short happy-path execution flow based on Make targets
+> - [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md) for the detailed build diary, architecture rationale, validation steps, and evidence mapping
 
 ---
 
@@ -19,7 +24,7 @@ DevOps / Infrastructure-as-Code project demonstrating how to provision a highly 
 ✅ **Auto Scaling Group** for the WordPress EC2 web servers in the private subnets  
 ✅ **One NAT Gateway per public subnet**, **matching the high-availability requirement** instead of collapsing private-subnet outbound traffic behind a single NAT gateway  
 ✅ **Private RDS MySQL deployment** with a DB subnet group and VPC security controls, **so the database is not internet-facing**  
-✅ **Restricted bastion host access** for controlled SSH entry into the environment, **instead of exposing the private web tier directly**  
+✅ **Restricted bastion host access** for controlled administrative SSH entry into the private environment, **instead of exposing the private web tier directly**  
 ✅ **Local AWS CLI profile + Terraform workflow** for `plan` / `apply` / `destroy`  
 ✅ **Cost-aware validation workflow** with AWS Budgets, evidence capture, and immediate teardown
 
@@ -39,7 +44,7 @@ Internet
    | HTTP :80
    v
 +------------------------------------------------------------------+
-| Application Load Balancer                                        |
+| Application Load Balancer (ALB)                                       |
 | public subnets (2 AZs) | public entrypoint | DNS: <alb_dns_name> |
 +------------------------------------------------------------------+
                                   |
@@ -81,9 +86,10 @@ Admin / operator
 +------------------------------------------------------------------+
 ~~~
 
-Notes:
+### Notes
+
 - The **ALB** is the **public HTTP entrypoint** for the application.
-- he **WordPress web tier / EC2 instances** run in **private subnets** and are **not directly public**.
+- The **WordPress web tier / EC2 instances** run in **private subnets** and are **not directly public**.
 - The **RDS database** is also **private** and only reachable from inside the VPC.
 - The **bastion host** is the **controlled SSH entrypoint** for administrative access.
 - The **private subnets use NAT gateways for outbound internet access** without becoming directly public.
@@ -94,9 +100,11 @@ Notes:
 
 This repository provisions an AWS-based WordPress platform as code.
 
+### Deployed Stack
+
 The final deployed stack includes:
 
-- **1 custom VPC** in `eu-west-3`
+- **1 custom VPC** in `eu-west-3` / Paris
 - **2 public subnets** and **2 private subnets** across `eu-west-3a` and `eu-west-3b`
 - **1 Internet Gateway**
 - **2 NAT Gateways**
@@ -106,10 +114,12 @@ The final deployed stack includes:
 - **1 Multi-AZ RDS MySQL instance**
 - Terraform outputs for the ALB DNS name, DB endpoint, subnet IDs, security groups, and VPC ID
 
+### Deployment Validation
+
 The deployment was validated through:
-- successful Terraform `plan`, `apply`, and `destroy`
+- Successful Terraform `plan`, `apply`, and `destroy`
 - AWS Console screenshots across VPC / EC2 / RDS / Budgets / Tag Editor (see `docs/evidence/aws/...`)
-- browser-based WordPress proof via the ALB DNS name (see `docs/evidence/wp/...`)
+- Browser-based WordPress proof via the ALB DNS name (see `docs/evidence/wp/...`)
 
 ---
 
@@ -128,7 +138,7 @@ The deployment was validated through:
    Saved plans, grouped resource summaries, and optional graph/visualization helpers were used to inspect what Terraform was about to create.
 
 5. **Full stack deployed and validated**  
-   The AWS stack was applied successfully, inspected in the console, and verified in the browser through the ALB-hosted WordPress flow.
+   The AWS stack was applied successfully, inspected in the AWS Console, and verified in the browser through the ALB-hosted WordPress flow.
 
 6. **Evidence captured and stack destroyed**  
    AWS Console and browser proof were collected, then the full stack was destroyed again to end the cost-generating phase.
@@ -137,27 +147,29 @@ The deployment was validated through:
 
 ## ✅ DevOps / IaC Scope Implemented
 
-- Created a **modular Terraform layout** with dedicated **child modules** for:
+- **Modular Terraform layout** with dedicated **child modules** for:
   - **`network`**
   - **`database`**
   - **`web`**
   - **`bastion`**
-- Configured **AWS CLI access** for **local Terraform execution**
-- Defined **custom CIDR ranges** for the **VPC and all 4 subnets**, **because the project uses a dedicated custom VPC instead of AWS defaults**
-- Used Terraform **data sources** to select the target **Availability Zones** and **AMI**
-- Provisioned the **AWS network foundation declaratively**
-- Added a **private Multi-AZ RDS layer**
-- Added a **public ALB** with **target group** and **HTTP listener**
-- Added a **launch template** and **Auto Scaling Group** for the web tier
-- **Bootstrapped WordPress automatically** through EC2 `user_data`
-- Added a **restricted bastion host** and **SSH key-pair provisioning**
-- Added a **Makefile** for the common **Terraform lifecycle + plan inspection commands**
-- Captured **creation, runtime, and cleanup evidence**
-- **Destroyed the entire stack** after validation
+- **AWS CLI access** for local Terraform execution
+- **Custom CIDR ranges** for the **VPC and all 4 subnets**, because the project uses a dedicated custom VPC instead of AWS defaults
+- **Terraform data sources** to select the target **Availability Zones** and **AMI**
+- **AWS network foundation**
+- **Private Multi-AZ RDS layer**
+- **Public ALB** with **target group** and **HTTP listener**
+- **Launch template** and **Auto Scaling Group** for the web tier
+- **Automatic WordPress bootstrap** through EC2 `user_data`
+- **Restricted bastion access path** with **AWS key-pair registration** from the already existing local public SSH key
+- **Makefile** for the common **Terraform lifecycle + plan inspection commands**
+- **Creation, runtime, and cleanup evidence**
+- **Clean full-stack teardown** after validation
 
 ---
 
 ## 📁 Project Structure
+
+### Repository Tree
 
 ~~~bash
 .
@@ -167,9 +179,8 @@ The deployment was validated through:
 │   │   └── wp/                          # Browser screenshots for WordPress load, install wizard, login screen, and rendered sample page
 │   ├── IMPLEMENTATION.md                # Full build diary with rationale, commands, observations, and evidence links
 │   ├── RUNBOOK.md                       # Short happy-path rerun guide using Make targets as primary entrypoints
-│   ├── SETUP.md                         # Local setup guide for Terraform, AWS CLI, IAM user, profile, and AWS budget guardrails
-│   └── _private/                        # Local-only notes excluded from the public documentation flow
-├── Makefile                             # Human-friendly wrappers for init / validate / plan / apply / destroy / graph helpers
+│   └── SETUP.md                         # Local setup guide for Terraform, AWS CLI, IAM user, profile, and AWS budget guardrails
+├── Makefile                             # Comfy-wrappers for init / validate / plan / apply / destroy / graph helpers
 ├── main.tf                              # Root module wiring for network, database, bastion, and web
 ├── providers.tf                         # AWS provider configuration and shared default tags
 ├── versions.tf                          # Terraform and provider version requirements
@@ -177,35 +188,76 @@ The deployment was validated through:
 ├── outputs.tf                           # Root outputs for ALB, DB, VPC, subnets, and security groups
 ├── terraform.tfvars.example             # Redacted example for local-only runtime values
 ├── modules/
-│   ├── network/                         # VPC, subnets, route tables, Internet Gateway, NAT Gateways
-│   ├── database/                        # RDS subnet group, DB security group, Multi-AZ RDS instance
-│   ├── web/                             # ALB, listener, target group, launch template, Auto Scaling Group
-│   └── bastion/                         # Bastion EC2 instance, SSH key pair, restricted bastion security group
+│   ├── network/                         # Network layer module
+│   │   ├── main.tf                      # VPC, subnets, Internet Gateway, NAT Gateways, route tables, and associations
+│   │   ├── variables.tf                 # Network module inputs such as naming context and CIDR ranges
+│   │   └── outputs.tf                   # Network outputs such as VPC ID, subnet IDs, and selected AZs
+│   ├── database/                        # Database layer module
+│   │   ├── main.tf                      # DB subnet group, DB security group, and private Multi-AZ RDS instance
+│   │   ├── variables.tf                 # Database module inputs such as VPC placement and DB settings
+│   │   └── outputs.tf                   # Database outputs such as DB endpoint, port, and DB security group ID
+│   ├── web/                             # Web / application layer module
+│   │   ├── main.tf                      # ALB, target group, listener, launch template, Auto Scaling Group, and security groups
+│   │   ├── variables.tf                 # Web module inputs such as subnet IDs, DB connection data, and instance type
+│   │   └── outputs.tf                   # Web outputs such as ALB DNS name, ASG name, and web security group ID
+│   └── bastion/                         # Administrative access module
+│       ├── main.tf                      # Bastion EC2 instance, AWS key pair, and restricted bastion security group
+│       ├── variables.tf                 # Bastion module inputs such as trusted SSH CIDR, key path, and instance type
+│       └── outputs.tf                   # Bastion outputs such as public IP and bastion security group ID
 └── user_data/
     └── wordpress.sh.tftpl               # Bootstrap template for package install, WordPress download, config generation, and Apache startup
 ~~~
 
-**The final solution centers around 6 main building blocks:**
+### Main Buildung Blocks
 
-- **(1) the root Terraform composition layer** (`main.tf`, `providers.tf`, `variables.tf`, `outputs.tf`)
-- **(2) the network module** (`modules/network`)
-- **(3) the database module** (`modules/database`)
-- **(4) the web module** (`modules/web`)
-- **(5) the bastion module** (`modules/bastion`)
-- **(6) the documentation + evidence layer** (`docs/`)
+The final solution centers around 7 main building blocks:
+
+- **(1) Root Terraform composition layer**
+  - `main.tf`
+  - `providers.tf`
+  - `versions.tf`
+  - `variables.tf`
+  - `outputs.tf`
+- **(2) Network module**
+  - `modules/network/main.tf`
+  - `modules/network/outputs.tf`
+  - `modules/network/variables.tf`
+- **(3) Database module** 
+  - `modules/database/main.tf`
+  - `modules/database/outputs.tf`
+  - `modules/database/variables.tf`
+- **(4) Web module**
+  - `modules/web/main.tf`
+  - `modules/web/outputs.tf`
+  - `modules/web/variables.tf`
+- **(5) Bastion module**
+  - `modules/bastion/main.tf`
+  - `modules/bastion/outputs.tf`
+  - `modules/bastion/variables.tf`
+- **(6) EC2 bootstrap layer**
+  - `user_data/wordpress.sh.tftpl`  
+- **(7) Documentation + evidence layer** 
+  - `docs/`
+  - `docs/evidence/`
 
 ---
 
-## ✅ What works
+## ✅ What works - Validated Results
+
+### Functional validation 
 
 - Terraform initializes and validates successfully
 - The saved plan shows the intended AWS resource set before apply
-- The full stack deploys successfully into AWS setting up the desired resource infrastructure (see below)
-- WordPress is reachable through the ALB DNS name. The WordPress installation wizard loads successfully in the browser and a sample page is displayed after site setup. 
+- The full stack deploys successfully into AWS with the intended infrastructure resource set (see grouped inventory below)
+- WordPress is reachable through the ALB DNS name. 
+- The WordPress installation wizard loads successfully in the browser.
+- A WordPress sample page is displayed after site setup. 
 - AWS Console evidence exists for both creation and destruction phases
 - The stack can be destroyed cleanly again after validation via Terraform
 
-**Representative grouped infrastructure inventory (`make plan-counts`):**
+### Representative AWS resoucre inventory
+
+`make plan-counts` shows the grouped AWS resource inventory from the reviewed Terraform plan, i.e. the main resource types Terraform intends to create before the first real apply: 
 
 ~~~text
 1x aws_autoscaling_group
@@ -240,10 +292,13 @@ This project includes a few practical engineering choices worth calling out:
   To provide high-availability, the project uses **one NAT Gateway per public subnet**, instead of collapsing everything behind a single NAT gateway.
 
 - **Private application + database placement**  
-  The web tier and RDS layer run in private subnets, while the ALB and bastion remain public-facing. This keeps the public attack surface smaller and helps structuring the traffic flow: internet -> ALB, operator -> bastion, app -> database
+  The web tier and RDS layer run in private subnets, while the ALB and bastion remain public-facing. This keeps the public attack surface smaller and helps to structure the traffic flow clearly: 
+  - Internet -> Application Load Balancer (ALB)
+  - Operator -> Bastion
+  - App      -> Database
 
 - **Ephemeral cost-aware validation**  
-  The stack is intentionally treated as short-lived cloud infrastructure to keep costs in check: apply, validate, capture evidence, destroy.
+  The stack is intentionally treated as short-lived cloud infrastructure to keep costs in check - hence the workflow: apply, validate, capture evidence, destroy.
 
 ---
 
@@ -282,11 +337,11 @@ This project includes a few practical engineering choices worth calling out:
 
 ## 📸 Evidence Highlights
 
-### 1) Provisioned resoucres on AWS after `terraform apply` 
+### 1) Provisioned AWS resoucres after `terraform apply` 
 
 ![AWS Tag Editor search result after destroy](docs/evidence/aws/03-aws-te-resoucre-search-result-after-apply.png)
 
-*Post-apply proof showing that the aws stack was provisioend by terraform (obtained via a tag-editor search for ressoucres carrying the project tag `wordpress-platform`*
+*Post-apply proof showing that the AWS stack was provisioned successfully by Terraform (obtained via an AWS Tag Editor search for resoucres carrying the project tag `wordpress-platform`*
 
 ### 2) Public WordPress page rendered successfully
 
@@ -310,11 +365,9 @@ This project includes a few practical engineering choices worth calling out:
 
 ![AWS target group targets](docs/evidence/aws/18-aws-ec2-target-group-targets.png)
 
-*Target-group proof showing that the web instances were registered behind the ALB and participated in request handling.*
+*Target-group proof showing that the web instances were registered behind the ALB and were available as application targets during validation.*
 
 ### 6) Resource cleanup verified after destroy
-
-TODO: Provide current screenshot showing no hits - once AWS refreshed this  
 
 ![AWS Tag Editor search result after destroy](docs/evidence/aws/21-aws-te-resoucre-search-result-after-destroy.png)
 
@@ -322,10 +375,10 @@ TODO: Provide current screenshot showing no hits - once AWS refreshed this
 
 ---
 
-## 🧠 Runbook + Setup + Implementation Log
+## 🧠 Full Project Documentation 
 
 **Setup guide**  
-For the local setup path, IAM user creation, CLI profile configuration, AWS Budgets guardrail, and tooling prerequisites:
+For the local Terraform setup path, IAM user creation, CLI profile configuration, AWS Budgets guardrail, and tooling prerequisites:
 - [docs/SETUP.md](docs/SETUP.md)
 
 **Runbook**  

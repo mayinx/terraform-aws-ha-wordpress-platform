@@ -94,7 +94,7 @@ NONCE_SALT="$(openssl rand -base64 48)"
 # -----------------------------------------------------------------------------
 
 # Write the WordPress configuration file with database settings injected by Terraform.
-# The ${...} placeholders below are replaced when Terraform renders this template.
+# The Terraform template placeholders below are replaced when the file is rendered.
 cat > /var/www/html/wp-config.php <<EOF
 <?php
 define( 'DB_NAME', '${db_name}' );

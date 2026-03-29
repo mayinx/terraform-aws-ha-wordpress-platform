@@ -538,20 +538,26 @@ The full plan now showed the web layer on top of the network + DB layer, includi
 
 ### Rationale
 
-The web instances run in private subnets, so a controlled administrative entrypoint was needed.
+The web instances run in private subnets, so a controlled administrative entrypoint into that otherwise private environment was needed. The bastion host serves as that entrypoint and can be utilized for optional SSH-based access into the private environment.
 
-The bastion module depends on the **network** layer because the bastion host must be placed into a public subnet inside the custom VPC and protected by its own security group.
+Through the bastion, an operator can for example:
+- inspect private resources
+- connect to the private RDS endpoint with `mysql`
+- SSH onward into the private web instances if needed
+
+The bastion module depends on the **network** layer because the bastion host must be placed into a **public subnet** inside the custom VPC and protected by its own security group.
+
 
 > [!NOTE]
-> **Bastion access**  
+> **REstricted Bastion SSH access**  
 > A **bastion host** is a small public entrypoint used for controlled administrative SSH access into an otherwise private environment.  
 > In this project, the operator can SSH to the bastion first and then reach private resources from inside the VPC.
-> The bastion is not left open to the whole internet on SSH.  
-> Instead, its security group only allows SSH from the specific `my_ip_cidr` value, i.e. the current trusted public egress IP.
+> This access is restricted, so that the bastion is not left open to the whole internet on SSH: Instead, its security group only allows SSH from the specific `my_ip_cidr` value, i.e. the current trusted public egress IP.
 
 > [!NOTE]
 > **SSH key-pair provisioning**  
-> The project creates an AWS **key pair resource** from the local public SSH key so the bastion instance can be accessed without passwords.
+> On Terraform apply, the project creates an **AWS key pair resource** from the already existing local public SSH key (using the value from `public_key_path`) 
+> This allows the bastion EC2 instance to be accessed without passwords, using the matching private key already present on the operator machine.
 
 ### What the bastion module creates
 
